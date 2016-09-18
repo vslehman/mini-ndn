@@ -58,80 +58,49 @@
 #   advertising or publicity pertaining to the Software or any derivatives
 #   without specific, written prior permission.
 
-from mininet.topo import Topo
-from mininet.net import Mininet
-from mininet.log import setLogLevel, output, info
-from mininet.cli import CLI
-from mininet.link import TCLink
-from mininet.util import ipStr, ipParse
-
-
-from ndn import ExperimentManager
-from ndn.ndn_host import NdnHost, CpuLimitedNdnHost
-from ndn.conf_parser import parse_hosts, parse_switches, parse_links
-
-import os.path, time
-import shutil
 import optparse
-import datetime
-from os.path import expanduser
-import sys
+import os
+import shutil
 import signal
+import sys
+from datetime import datetime
 from subprocess import call
 
-from ndn.nlsr import Nlsr, NlsrConfigGenerator
-from ndn.nfd import Nfd
+from mininet.cli import CLI
+from mininet.link import TCLink
+from mininet.log import setLogLevel, info
+from mininet.net import Mininet
+from mininet.topo import Topo
+from mininet.util import ipStr, ipParse
 
-VERSION_NUMBER = "0.2.0"
+import ndn
+from ndn.conf_parser import parse_hosts, parse_switches, parse_links
+from ndn.ndn_host import NdnHost, CpuLimitedNdnHost
 
-def printExperimentNames(option, opt, value, parser):
-    experimentNames = ExperimentManager.getExperimentNames()
-
-    print "Mini-NDN experiments:"
-    for experiment in experimentNames:
-        print "  %s" % experiment
-
+def print_experiment_names(option, opt, value, parser):
+    print 'Mini-NDN experiments:'
+    for experiment in ndn.ExperimentManager.getExperimentNames():
+        print "  {}".format(experiment)
     sys.exit()
 
-def printVersion(option, opt, value, parser):
-    print "Mini-NDN v%s" % VERSION_NUMBER
+def print_version(option, opt, value, parser):
+    print 'Mini-NDN v{}'.format(ndn.common.VERSION_NUMBER)
     sys.exit()
 
-class ProgramOptions:
-    def __init__(self):
-        self.ctime = 60
-        self.experimentName = None
-        self.nFaces = 3
-        self.templateFile = "minindn.conf"
-        self.hr = False
-        self.isCliEnabled = True
-        self.nlsrSecurity = False
-        self.nPings = 300
-        self.testbed = False
-        self.workDir = "/tmp"
-        self.resultDir = None
-        self.pctTraffic = 1.0
-
-def createResultsDir(resultDir, faces, hr):
+def create_results_dir(result_dir, faces, is_hr_enabled):
     if faces == 0:
         faces = "all"
+    routing_type = "hr" if is_hr_enabled else 'ls'
 
-    if hr:
-        routingType = "/hr/"
+    result_dir = os.path.join(str(result_dir), routing_type, str(faces))
+    if not os.path.isdir(result_dir):
+        os.makedirs(result_dir)
+        print "Results will be stored at: {}".format(result_dir)
     else:
-        routingType = "/ls/"
+        print "Results directory '{}' already exists!".format(result_dir)
+        sys.exit(1)
+    return result_dir
 
-    resultDir = "%s/%s/faces-%s" % (str(resultDir), routingType, str(faces))
-    resultDir = os.path.abspath(resultDir)
-
-    if not os.path.isdir(resultDir):
-        os.makedirs(resultDir)
-    else:
-        print("Results directory (%s) already exists!" % resultDir)
-        sys.exit(1);
-
-    print "Results will be stored at: %s" % resultDir
-    return resultDir
 
 def parse_args():
     usage = """Usage: minindn [template_file] [ -t | --testbed ]
@@ -139,164 +108,197 @@ def parse_args():
     will be used.
     If --testbed is used, minindn will run the NDN Project Testbed.
     """
-
     parser = optparse.OptionParser(usage)
+    parser.add_option(
+        "--ctime",
+        action="store",
+        dest="ctime",
+        type="int",
+        default=60,
+        help="Specify convergence time for the topology (Default: 60 seconds)"
+    )
+    parser.add_option(
+        "--experiment",
+        action="store",
+        dest="experiment",
+        default=None,
+        help="Runs the specified experiment"
+    )
+    parser.add_option(
+        "--faces",
+        action="store",
+        dest="faces",
+        type="int",
+        default=3,
+        help="Specify number of faces 0-60"
+    )
+    parser.add_option(
+        "--hr",
+        action="store_true",
+        dest="is_hr_enabled",
+        default=False,
+        help="--hr is used to turn on hyperbolic routing"
+    )
+    parser.add_option(
+        "--list-experiments",
+        action="callback",
+        callback=print_experiment_names,
+        help="Lists the names of all available experiments"
+    )
+    parser.add_option(
+        "--no-cli",
+        action="store_false",
+        dest="is_cli_enabled",
+        default=True,
+        help="Run experiments and exit without showing the command line interface"
+    )
+    parser.add_option(
+        "--num_pings",
+        action="store",
+        dest="num_pings",
+        type="int",
+        default=300,
+        help="Number of pings to perform between each node in the experiment"
+    )
+    parser.add_option(
+        "--nlsr-security",
+        action="store_true",
+        dest="nlsr_security",
+        default=False,
+        help="Enables NLSR security"
+    )
+    parser.add_option(
+        "-t",
+        "--testbed",
+        action="store_true",
+        dest="testbed",
+        default=False,
+        help="instantiates NDN Testbed"
+    )
+    parser.add_option(
+        "--work-dir",
+        action="store",
+        dest="work_dir",
+        default='/tmp',
+        help="Specify the working directory; default is /tmp"
+    )
+    parser.add_option(
+        "--result-dir",
+        action="store",
+        dest="result_dir",
+        default=None,
+        help="Specify the full path destination folder where experiment results will be moved"
+    )
+    parser.add_option(
+        "--pct-traffic",
+        action="store",
+        dest="pct_traffic",
+        type="float",
+        default=1.0,
+        help="Specify the percentage of nodes each node should ping"
+    )
+    parser.add_option(
+        '--version',
+        '-V',
+        action='callback',
+        callback=print_version,
+        help='Displays version information'
+    )
 
-    parser.add_option("--ctime", action="store", dest="ctime", type="int", default=60,
-    help="Specify convergence time for the topology (Default: 60 seconds)")
+    (options, args) = parser.parse_args()
 
-    parser.add_option("--experiment", action="store", dest="experiment",
-    help="Runs the specified experiment")
-
-    parser.add_option("--faces", action="store", dest="faces", type="int", default=3,
-    help="Specify number of faces 0-60")
-
-    parser.add_option("--hr", action="store_true", dest="hr", default=False,
-    help="--hr is used to turn on hyperbolic routing")
-
-    parser.add_option("--list-experiments", action="callback", callback=printExperimentNames,
-    help="Lists the names of all available experiments")
-
-    parser.add_option("--no-cli", action="store_false", dest="isCliEnabled", default=True,
-    help="Run experiments and exit without showing the command line interface")
-
-    parser.add_option("--nPings", action="store", dest="nPings", type="int", default=300,
-    help="Number of pings to perform between each node in the experiment")
-
-    parser.add_option("--nlsr-security", action="store_true", dest="nlsrSecurity", default=False,
-    help="Enables NLSR security")
-
-    parser.add_option("-t", "--testbed", action="store_true", dest="testbed", default=False,
-    help="instantiates NDN Testbed")
-
-    parser.add_option("--work-dir", action="store", dest="workDir", default="/tmp",
-    help="Specify the working directory; default is /tmp")
-
-    parser.add_option("--result-dir", action="store", dest="resultDir", default=None,
-    help="Specify the full path destination folder where experiment results will be moved")
-
-    parser.add_option("--pct-traffic", action="store", dest="pctTraffic", type="float", default=1.0,
-    help="Specify the percentage of nodes each node should ping")
-
-    parser.add_option('--version', '-V', action='callback', callback=printVersion,
-    help='Displays version information')
-
-    (args, arg) = parser.parse_args()
-
-    options = ProgramOptions()
-    options.ctime = args.ctime
-    options.experimentName = args.experiment
-    options.nFaces = args.faces
-    options.hr = args.hr
-    options.isCliEnabled = args.isCliEnabled
-    options.nlsrSecurity = args.nlsrSecurity
-    options.nPings = args.nPings
-
-    options.testbed = args.testbed
-    options.workDir = args.workDir
-    options.resultDir = args.resultDir
-    options.pctTraffic = args.pctTraffic
-
-    if options.experimentName is not None and options.experimentName not in ExperimentManager.getExperimentNames():
-        print("No experiment named %s" % options.experimentName)
+    if options.experiment_name is not None and options.experiment_name not in ndn.ExperimentManager.getExperimentNames():
+        print "No experiment named {}".format(options.experiment_name)
         sys.exit()
 
-    if options.experimentName is not None and options.resultDir is None:
+    if options.experiment_name is not None and options.result_dir is None:
         print "No results folder specified; experiment results will remain in the working directory"
 
-    if len(arg) == 0 or len(arg) > 2:
-        options.templateFile = ''
+    if len(args) == 0:
+        options.template_file = ''
     else:
-        options.templateFile = arg[0]
+        options.template_file = args[0]
 
     return options
 
 class NdnTopo(Topo):
-    def __init__(self, conf_arq, workDir, **opts):
+    def __init__(self, conf_arq, work_dir, **opts):
         Topo.__init__(self, **opts)
 
-        global hosts_conf
-        global links_conf
-        hosts_conf = parse_hosts(conf_arq)
-        switches_conf = parse_switches(conf_arq)
-        links_conf = parse_links(conf_arq)
+        self.hosts_conf = parse_hosts(conf_arq)
+        self.switches_conf = parse_switches(conf_arq)
+        self.links_conf = parse_links(conf_arq)
 
-        self.isTCLink = False
-        self.isLimited = False
+        self.is_tc_link = False
+        self.is_limited = False
 
-        for host in hosts_conf:
-            if host.cpu != None and self.isLimited != True:
-                self.isLimited = True
-            self.addHost(host.name, app=host.app, params=host.uri_tuples, cpu=host.cpu,cores=host.cores,cache=host.cache, workdir=workDir)
+        for host in self.hosts_conf:
+            if host.cpu != None and self.is_limited != True:
+                self.is_limited = True
 
-        for switch in switches_conf:
+            self.addHost(
+                host.name,
+                app=host.app,
+                params=host.uri_tuples,
+                cpu=host.cpu,
+                cores=host.cores,
+                cache=host.cache,
+                workdir=work_dir
+            )
+
+        for switch in self.switches_conf:
             self.addSwitch(switch.name)
 
-        for link in links_conf:
+        for link in self.links_conf:
             if len(link.linkDict) == 0:
                 self.addLink(link.h1, link.h2)
             else:
                 self.addLink(link.h1, link.h2, **link.linkDict)
-                self.isTCLink = True
+                self.is_tc_link = True
 
         info('Parse of ' + conf_arq + ' done.\n')
 
+def get_template_file(options):
+    if options.testbed:
+        return os.path.join(ndn.common.MINI_NDN_INSTALL_DIR, 'minindn.testbed.conf')
+    elif options.template_file == '':
+        return os.path.join(ndn.common.MINI_NDN_INSTALL_DIR, 'default-topology.conf')
+
+    return None
+
 def execute(options):
     "Create a network based on template_file"
+    template_file = get_template_file(options)
+    if template_file is None or os.path.exists(template_file) is False:
+        sys.exit('No template file given and default template file cannot be found. Exiting...\n')
 
-    template_file = options.templateFile
-    install_dir='/usr/local/etc/mini-ndn/'
+    try:
+        ndn.nfd.setup()
+    except IOError as e:
+        sys.exit(e)
 
-    if template_file == '':
-        template_file = install_dir + 'default-topology.conf'
+    if options.result_dir is not None:
+        options.result_dir = create_results_dir(options.result_dir, options.num_faces, options.is_hr_enabled)
 
-    if options.testbed:
-        template_file = install_dir + 'minindn.testbed.conf'
+    start_time = datetime.now()
 
-    if os.path.exists(template_file) == False:
-        info('No template file given and default template file cannot be found. Exiting...\n')
-        quit()
+    topo = NdnTopo(template_file, options.work_dir)
 
-    # Use nfd.conf as default configuration for NFD, else use the sample
-
-    nfdConfFile = "%s/nfd.conf" % install_dir
-    if os.path.isfile("/usr/local/etc/ndn/nfd.conf") == True:
-        shutil.copy2("/usr/local/etc/ndn/nfd.conf", nfdConfFile)
-    elif os.path.isfile("/usr/local/etc/ndn/nfd.conf.sample") == True:
-        shutil.copy2("/usr/local/etc/ndn/nfd.conf.sample", nfdConfFile)
+    if topo.is_tc_link is True and topo.is_limited is True:
+        net = Mininet(topo, host=CpuLimitedNdnHost, link=TCLink)
+    elif topo.is_tc_link is True and topo.is_limited is False:
+        net = Mininet(topo, host=NdnHost, link=TCLink)
+    elif topo.is_tc_link is False and topo.is_limited is True:
+        net = Mininet(topo, host=CpuLimitedNdnHost)
     else:
-        sys.exit("nfd.conf or nfd.conf.sample cannot be found in the expected directory. Exit.")
-
-    call(["sudo", "sed", "-i", 's|default_level [A-Z]*$|default_level $LOG_LEVEL|g', nfdConfFile])
-
-    if options.resultDir is not None:
-        options.resultDir = createResultsDir(options.resultDir, options.nFaces, options.hr)
-
-    topo = NdnTopo(template_file, options.workDir)
-
-    t = datetime.datetime.now()
-
-    if topo.isTCLink == True and topo.isLimited == True:
-        net = Mininet(topo,host=CpuLimitedNdnHost,link=TCLink)
-    elif topo.isTCLink == True and topo.isLimited == False:
-        net = Mininet(topo,host=NdnHost,link=TCLink)
-    elif topo.isTCLink == False and topo.isLimited == True:
-        net = Mininet(topo,host=CpuLimitedNdnHost)
-    else:
-        net = Mininet(topo,host=NdnHost)
-
-    t2 = datetime.datetime.now()
-
-    delta = t2 - t
-
-    info('Setup time: ' + str(delta.seconds) + '\n')
+        net = Mininet(topo, host=NdnHost)
 
     net.start()
 
     # Giving proper IPs to intf so neighbor nodes can communicate
     # This is one way of giving connectivity, another way could be
     # to insert a switch between each pair of neighbors
-    ndnNetBase = "1.0.0.0"
+    ndn_net_base = "1.0.0.0"
     interfaces = []
     for host in net.hosts:
         for intf in host.intfList():
@@ -309,89 +311,50 @@ def execute(options):
             if link.intf1 not in interfaces and link.intf2 not in interfaces:
                 interfaces.append(link.intf1)
                 interfaces.append(link.intf2)
-                node1.setIP(ipStr(ipParse(ndnNetBase) + 1) + '/30', intf=link.intf1)
-                node2.setIP(ipStr(ipParse(ndnNetBase) + 2) + '/30', intf=link.intf2)
-                ndnNetBase = ipStr(ipParse(ndnNetBase) + 4)
+                node1.setIP(ipStr(ipParse(ndn_net_base) + 1) + '/30', intf=link.intf1)
+                node2.setIP(ipStr(ipParse(ndn_net_base) + 2) + '/30', intf=link.intf2)
+                ndn_net_base = ipStr(ipParse(ndn_net_base) + 4)
 
-    nodes = ""    # Used later to check prefix name in checkFIB
+    # Used later to check prefix name in checkFIB
+    nodes = ','.join([str(host.name) for host in net.hosts])
 
-    # NLSR Security
-    if options.nlsrSecurity is True:
-        Nlsr.createKeysAndCertificates(net, options.workDir)
+    nlsr_opts = {
+        'security': options.nlsr_security,
+        'max-faces-per-prefix': options.num_faces,
+        'hyperbolic-state': options.is_hr_enabled
+    }
+    ndn.nlsr.setup(topo.hosts_conf, options.work_dir, nlsr_opts)
 
-    # NLSR initialization
-    for host in net.hosts:
-        nodes += str(host.name) + ","
-
-        conf = next(x for x in hosts_conf if x.name == host.name)
-        host.nlsrParameters = conf.nlsrParameters
-
-        if options.nFaces is not None:
-            host.nlsrParameters["max-faces-per-prefix"] = options.nFaces
-
-        if options.hr is True:
-            host.nlsrParameters["hyperbolic-state"] = "on"
-
-        # Generate NLSR configuration file
-        configGenerator = NlsrConfigGenerator(host, options.nlsrSecurity)
-        configGenerator.createConfigFile()
-
-        # Start NLSR
-        host.nlsr = Nlsr(host)
-        host.nlsr.start()
-
-    nodes = nodes[0:-1]
-
-    for host in net.hosts:
-        if 'app' in host.params:
-            if host.params['app'] != '':
-                app = host.params['app']
-                print "Starting " + app + " on node " + host.name
-                print(host.cmd(app))
+    print 'Setup time: {}'.format((start_time - datetime.now()).seconds)
 
     # Load experiment
-    experimentName = options.experimentName
-
-    if experimentName is not None:
-        print "Loading experiment: %s" % experimentName
-
-        experimentArgs = {
+    experiment_name = options.experiment_name
+    if experiment_name is not None:
+        experiment_args = {
             "net": net,
             "nodes": nodes,
             "ctime": options.ctime,
-            "nPings": options.nPings,
-            "strategy": Nfd.STRATEGY_BEST_ROUTE,
-            "pctTraffic": options.pctTraffic
+            "num_pings": options.num_pings,
+            "pct_traffic": options.pct_traffic
         }
+        ndn.ExperimentManager.run(experiment_name, experiment_args)
 
-        experiment = ExperimentManager.create(experimentName, experimentArgs)
-
-        if experiment is not None:
-            experiment.start()
-        else:
-            print "ERROR: Experiment '%s' does not exist" % experimentName
-            return
-
-    if options.isCliEnabled is True:
+    if options.is_cli_enabled:
         CLI(net)
 
     net.stop()
 
-    if options.resultDir is not None:
-        print("Moving results to %s" % options.resultDir)
-        os.system("sudo mv /%s/* %s" % (options.workDir, options.resultDir))
+    if options.result_dir is not None:
+        print "Moving results to {}".format(options.result_dir)
+        shutil.move(options.work_dir, options.result_dir)
 
 def signal_handler(signal, frame):
-    print('Cleaning up...')
+    print 'Cleaning up...'
     call(["nfd-stop"])
     call(["sudo", "mn", "--clean"])
     sys.exit(1)
 
 if __name__ == '__main__':
-
-    hosts_conf = []
-    links_conf = []
-
     signal.signal(signal.SIGINT, signal_handler)
 
     options = parse_args()

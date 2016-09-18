@@ -25,6 +25,7 @@ import time
 import sys
 from itertools import cycle
 
+import nfd
 from ndn import ExperimentManager
 
 class Experiment:
@@ -34,7 +35,7 @@ class Experiment:
         self.nodes = args["nodes"]
         self.convergenceTime = args["ctime"]
         self.nPings = args["nPings"]
-        self.strategy = args["strategy"]
+        self.strategy = args.get("strategy", nfd.STRATEGY_BEST_ROUTE)
         self.pctTraffic = float(args["pctTraffic"])
 
         # Used to restart pings on the recovered node if any

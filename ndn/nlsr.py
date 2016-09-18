@@ -29,6 +29,32 @@ import os
 import shutil
 import textwrap
 
+def setup(hosts_conf, work_dir, nlsr_opts):
+  is_security_enabled = nlsr_opts.get('security', False)
+  max_faces_per_prefix = nlsr_opts.get('max-faces-per-prefix', 3)
+  hyperbolic_state = nlsr_opts.get('hyperbolic_state', 'off')
+
+  # NLSR Security
+  if is_security_enabled:
+      Nlsr.createKeysAndCertificates(net, work_dir)
+
+  # NLSR initialization
+  for host in net.hosts:
+      conf = next(x for x in hosts_conf if x.name == host.name)
+
+      host.nlsrParameters = conf.nlsrParameters
+      host.nlsrParameters["max-faces-per-prefix"] = max_faces_per_prefix
+      host.nlsrParameters["hyperbolic-state"] = hyperbolic_state
+
+      # Generate NLSR configuration file
+      configGenerator = NlsrConfigGenerator(host, is_security_enabled)
+      configGenerator.createConfigFile()
+
+      # Start NLSR
+      host.nlsr = Nlsr(host)
+      host.nlsr.start()
+
+
 class Nlsr(NdnApplication):
     def __init__(self, node):
         NdnApplication.__init__(self, node)

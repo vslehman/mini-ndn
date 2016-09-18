@@ -60,6 +60,7 @@ class _ExperimentManager:
         else:
             return None
 
+
 def __getInstance():
     if _ExperimentManager.instance is None:
         _ExperimentManager.instance = _ExperimentManager()
@@ -84,3 +85,8 @@ def getExperimentNames():
         experimentNames.append(key)
 
     return experimentNames
+
+def run(self, experiment_name, experiment_args):
+        print "Loading experiment: {}".format(experimentName)
+        experiment = ExperimentManager.create(experimentName, experimentArgs)
+        experiment.start()
