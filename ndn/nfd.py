@@ -21,14 +21,15 @@
 # along with Mini-NDN, e.g., in COPYING.md file.
 # If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import re
+import shutil
 import subprocess
 import time
 
 from ndn.common import MINI_NDN_INSTALL_DIR
 from ndn.ndn_application import NdnApplication
 
-CONF_TEMPLATE = os.path.join(MINI_NDN_INSTALL_DIR, 'nfd.conf')
 NFD_CONF_DIR = os.path.abspath('/usr/local/etc/ndn/')
 CONF_FILE = os.path.join(NFD_CONF_DIR, 'nfd.conf')
 SAMPLE_CONF_FILE = os.path.join(NFD_CONF_DIR, 'nfd.conf.sample')
@@ -48,23 +49,30 @@ STRATEGIES = [
     STRATEGY_NCC
 ]
 
+VERSION = subprocess.check_output('nfd --version')
 def _get_version():
     output = subprocess.check_output('nfd --version', shell=True)
     matches = re.match('([0-9]+\.[0-9]+\.[0-9]+)\-', output)
     return matches.group(1)
 
-VERSION = subprocess.check_output('nfd --version')
+_CONF_TEMPLATE_STRING = None
+def _create_conf_template_string():
+    if _CONF_TEMPLATE_STRING is None:
+        # Use nfd.conf as default configuration for NFD, otherwise use the sample configuration
+        if os.path.isfile(NFD_CONF_FILE):
+            with open(NFD_CONF_FILE, 'r') as conf_file:
+                _CONF_TEMPLATE_STRING = conf_file.read()
+        elif os.path.isfile(NFD_SAMPLE_CONF_FILE):
+            with open(NFD_SAMPLE_CONF_FILE, 'r') as conf_file:
+                _CONF_TEMPLATE_STRING = conf_file.read()
+        else:
+            raise IOError("Neither nfd.conf or nfd.conf.sample can be found in {}!".format(NFD_CONF_DIR))
+
+    return _CONF_TEMPLATE_STRING
+
 
 def setup():
-    # Use nfd.conf as default configuration for NFD, else use the sample
-    if os.path.isfile(NFD_CONF_FILE) == True:
-        shutil.copy(NFD_CONF_FILE, NFD_CONF_TEMPLATE)
-    elif os.path.isfile(NFD_SAMPLE_CONF_FILE) == True:
-        shutil.copy(NFD_SAMPLE_CONF_FILE, NFD_CONF_TEMPLATE)
-    else:
-        raise Exception("nfd.conf or nfd.conf.sample cannot be found in {}. Exit.".format(NFD_CONF_DIR))
-
-    call(["sudo", "sed", "-i", 's|default_level [A-Z]*$|default_level $LOG_LEVEL|g', NFD_CONF_FILE])
+    _create_conf_template_string()
 
 class Nfd(NdnApplication):
     def __init__(self, node):
@@ -72,27 +80,33 @@ class Nfd(NdnApplication):
 
         self.logLevel = node.params["params"].get("nfd-log-level", "NONE")
 
-        self.confFile = "%s/%s.conf" % (node.homeFolder, node.name)
-        self.logFile = "%s/%s.log" % (node.homeFolder, node.name)
-        self.sockFile = "/var/run/%s.sock" % node.name
-        self.ndnFolder = "%s/.ndn" % node.homeFolder
-        self.clientConf = "%s/client.conf" % self.ndnFolder
+        self.confFile   = os.path.join(node.homeFolder, '{}.conf'.format(node.name))
+        self.logFile    = os.path.join(node.homeFolder, '{}.log'.format(node.name))
+        self.sockFile   = os.path.abspath("/var/run/{}.sock".format(node.name))
+        self.ndnFolder  = os.path.join(node.homeFolder, '.ndn')
+        self.clientConf = os.path.join(node.ndnFolder, 'client.conf')
 
-        # Copy nfd.conf file from /usr/local/etc/mini-ndn to the node's home
-        node.cmd("sudo cp /usr/local/etc/mini-ndn/nfd.conf %s" % self.confFile)
+        # Create conf file
+        conf_str = _CONF_TEMPLATE_STRING
+        conf_str = re.sub('default_level [A-Z]*$', 'default_level {}'.format(self.logLevel), conf_str)
+        conf_str = conf_str.replace('nfd.sock', '{}.sock'.format(node.name))
 
-        # Set log level
-        node.cmd("sudo sed -i \'s|$LOG_LEVEL|%s|g\' %s" % (self.logLevel, self.confFile))
-
-        # Open the conf file and change socket file name
-        node.cmd("sudo sed -i 's|nfd.sock|%s.sock|g' %s" % (node.name, self.confFile))
+        with open(self.confFile, 'w') as conf_file:
+            conf_file.write(conf_str)
 
         # Make NDN folder
-        node.cmd("sudo mkdir %s" % self.ndnFolder)
+        try:
+            os.mkdir(self.ndnFolder)
+        except OSError as e:
+            pass
 
-        # Copy the client.conf file and change the unix socket
-        node.cmd("sudo cp /usr/local/etc/mini-ndn/client.conf.sample %s" % self.clientConf)
-        node.cmd("sudo sed -i 's|nfd.sock|%s.sock|g' %s" % (node.name, self.clientConf))
+        # Create client.conf file
+        with open('/usr/local/etc/mini-ndn/client.conf.sample', 'r') as client_conf_file:
+            client_conf_str = client_conf_file.read()
+            client_conf_str = client_conf_str.replace('nfd.sock', '{}.sock'.format(node.name))
+
+        with open(self.clientConf, 'w') as client_conf_file:
+            client_conf_file.write(client_conf_str)
 
         # Change home folder
         node.cmd("export HOME=%s" % node.homeFolder)
