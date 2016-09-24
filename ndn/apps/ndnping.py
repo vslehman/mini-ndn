@@ -24,8 +24,8 @@
 class NdnPing(object):
     def __init__(self, host, **kwargs):
         self.host = host
-        self.interval = kwargs.get('interval', 1000)
-        self.timeout = kwargs.get('timeout', 4000)
+        self.interval = kwargs.get('interval', None)
+        self.timeout = kwargs.get('timeout', None)
         self.count = kwargs.get('count', None)
         self.starting_seq_no = kwargs.get('starting_seq_no', None)
         self.identifier = kwargs.get('identifier', None)
@@ -34,17 +34,28 @@ class NdnPing(object):
         self.log_file = kwargs.get('log_file', None)
 
     def start(self, name_prefix):
-        args = ['ndnping', '-i', self.interval, '-o', self.timeout]
-        args.extend(('-c', self.count)) if self.count
-        args.extend(('-n', self.starting_seq_no)) if self.starting_seq_no
-        args.extend(('-p', self.identifier)) if self.identifier
-        args.append('-a') if self.allow_cached_data
-        args.append('-t') if self.print_timestamp
+        args = ['ndnping',]
+        if self.interval is not None:
+            args.extend(('-i', self.interval))
+        if self.timeout is not None:
+            args.extend(('-o', self.timeout))
+        if self.count is not None:
+            args.extend(('-c', self.count))
+        if self.starting_seq_no is not None:
+            args.extend(('-n', self.starting_seq_no))
+        if self.identifier is not None:
+            args.extend(('-p', self.identifier))
+        if self.allow_cached_data is True:
+            args.append('-a')
+        if self.print_timestamp is True:
+            args.append('-t')
         args.append(name_prefix)
-        args.extend(('>>', log_file)) if self.log_file
+        if self.log_file is not None:
+            args.extend(('>>', self.log_file))
         args.append('&')
 
-        host.cmd(' '.join(args))
+        args = [str(arg) for arg in args]
+        self.host.cmd(' '.join(args))
 
 def ping(host, name_prefix, **kwargs):
     ping = NdnPing(host, **kwargs)
