@@ -45,9 +45,9 @@ class NdnPing(object):
             args.extend(('-n', self.starting_seq_no))
         if self.identifier is not None:
             args.extend(('-p', self.identifier))
-        if self.allow_cached_data is True:
+        if self.allow_cached_data:
             args.append('-a')
-        if self.print_timestamp is True:
+        if self.print_timestamp:
             args.append('-t')
         args.append(name_prefix)
         if self.log_file is not None:

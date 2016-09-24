@@ -23,34 +23,31 @@
 
 import unittest
 
-from ndn.apps import ndnping
+from ndn.apps import ndnpingserver
 from tests.mock import MockHost
 
-class TestNdnPing(unittest.TestCase):
+class TestNdnPingServer(unittest.TestCase):
     def setUp(self):
         self.host = MockHost()
         self.name_prefix = '/ndn/edu/memphis/ping'
 
     def test_default(self):
-        ndnping.ping(self.host, self.name_prefix)
+        ndnpingserver.start(self.host, self.name_prefix)
 
-        expected_cmd = "ndnping {} &".format(self.name_prefix)
+        expected_cmd = "ndnpingserver {} &".format(self.name_prefix)
         self.assertTrue(self.host.cmds[0] == expected_cmd)
 
     def test_args(self):
         args = {
-            'interval': 100,
-            'timeout': 1000,
-            'count': 10,
-            'starting_seq_no': 1234,
-            'identifier': 'test',
-            'allow_cached_data': True,
-            'print_timestamp': True,
-            'log_file': 'ping-log.txt',
+            'freshness': 1000,
+            'satisfy': 10,
+            'timestamp': True,
+            'size': 64,
+            'log_file': 'pingserver-log.txt',
         }
 
-        ndnping.ping(self.host, self.name_prefix, **args)
+        ndnpingserver.start(self.host, self.name_prefix, **args)
 
-        expected_cmd = "ndnping -i 100 -o 1000 -c 10 -n 1234 -p test -a -t {} >> ping-log.txt &".format(self.name_prefix)
+        expected_cmd = "ndnpingserver -x 1000 -p 10 -t -s 64 {} >> pingserver-log.txt &".format(self.name_prefix)
         self.assertEqual(self.host.cmds[0], expected_cmd)
 

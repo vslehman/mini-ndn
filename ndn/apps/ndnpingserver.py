@@ -29,20 +29,27 @@ class NdnPingServer(object):
         self.satisfy = kwargs.get('satisfy', None)
         self.timestamp = kwargs.get('timestamp', False)
         self.size = kwargs.get('size', None)
+        self.log_file = kwargs.get('log_file', None)
 
     def start(self, name_prefix):
         args = ['ndnpingserver',]
-        args.extend(('--freshness', self.freshness)) if self.freshness
-        args.extend(('--satisfy', self.satisfy)) if self.satisfy
-        args.append('-t') if self.timestamp
-        args.extend(('--size', self.size)) if self.size
+        if self.freshness is not None:
+            args.extend(('-x', self.freshness))
+        if self.satisfy is not None:
+            args.extend(('-p', self.satisfy))
+        if self.timestamp:
+            args.append('-t')
+        if self.size is not None:
+            args.extend(('-s', self.size))
         args.append(name_prefix)
-        args.extend(('>>', log_file)) if self.log_file
+        if self.log_file is not None:
+            args.extend(('>>', self.log_file))
         args.append('&')
 
-        host.cmd(' '.join(args))
+        args = [str(arg) for arg in args]
+        self.host.cmd(' '.join(args))
 
 
-def ping(host, name_prefix, **kwargs):
+def start(host, name_prefix, **kwargs):
     server = NdnPingServer(host, **kwargs)
     server.start(name_prefix)
