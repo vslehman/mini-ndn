@@ -27,6 +27,8 @@ from itertools import cycle
 
 import nfd
 from ndn import ExperimentManager
+from ndn.apps import ndnping
+from ndn.apps import ndnpingserver
 
 class Experiment:
 
@@ -52,7 +54,7 @@ class Experiment:
             host.nfd.setStrategy("/ndn/edu", self.strategy)
 
             # Start ping server
-            host.cmd("ndnpingserver /ndn/edu/" + str(host) + " > ping-server &")
+            ndnpingserver.start(host, '/ndn/edu/{}'.format(host), log_file='ping-server')
 
             # Create folder to store ping data
             host.cmd("mkdir ping-data")
@@ -90,7 +92,12 @@ class Experiment:
     def ping(self, source, dest, nPings):
         # Use "&" to run in background and perform parallel pings
         print "Scheduling ping(s) from %s to %s" % (source.name, dest.name)
-        source.cmd("ndnping -t -c "+ str(nPings) + " /ndn/edu/" + dest.name + " >> ping-data/" + dest.name + ".txt &")
+        ping_args = {
+            print_timestamp=True,
+            count=nPings,
+            log_file='ping-data/{}.txt'.format(dest.name)
+        }
+        ndnping.ping(source, "/ndn/edu/{}".format(dest.name), **ping_args)
         time.sleep(0.2)
 
     def startPings(self):
@@ -109,7 +116,7 @@ class Experiment:
         host.nfd.start()
         host.nlsr.start()
         host.nfd.setStrategy("/ndn/edu", self.strategy)
-        host.cmd("ndnpingserver /ndn/edu/" + str(host) + " > ping-server &")
+        ndnpingserver.start(host, '/ndn/edu/{}'.format(host), log_file='ping-server')
 
     def startPctPings(self):
         nNodesToPing = int(round(len(self.net.hosts)*self.pctTraffic))
