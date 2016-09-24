@@ -58,6 +58,7 @@
 #   advertising or publicity pertaining to the Software or any derivatives
 #   without specific, written prior permission.
 
+import logging
 import optparse
 import os
 import shutil
@@ -95,9 +96,9 @@ def create_results_dir(result_dir, faces, is_hr_enabled):
     result_dir = os.path.join(str(result_dir), routing_type, str(faces))
     if not os.path.isdir(result_dir):
         os.makedirs(result_dir)
-        print "Results will be stored at: {}".format(result_dir)
+        logging.info("Results will be stored at: {}".format(result_dir))
     else:
-        print "Results directory '{}' already exists!".format(result_dir)
+        logging.critical("Results directory '{}' already exists!".format(result_dir))
         sys.exit(1)
     return result_dir
 
@@ -208,11 +209,11 @@ def parse_args():
     (options, args) = parser.parse_args()
 
     if options.experiment_name is not None and options.experiment_name not in ndn.ExperimentManager.getExperimentNames():
-        print "No experiment named {}".format(options.experiment_name)
+        logging.critical("No experiment named {}".format(options.experiment_name))
         sys.exit()
 
     if options.experiment_name is not None and options.result_dir is None:
-        print "No results folder specified; experiment results will remain in the working directory"
+        logging.info("No results folder specified; experiment results will remain in the working directory")
 
     if len(args) == 0:
         options.template_file = ''
@@ -289,7 +290,7 @@ def execute(options):
     }
     ndn.nlsr.setup(topo.hosts_conf, options.work_dir, nlsr_opts)
 
-    print 'Setup time: {}'.format((start_time - datetime.now()).seconds)
+    logging.info('Setup time: {}'.format((start_time - datetime.now()).seconds))
 
     # Load experiment
     experiment_name = options.experiment_name
@@ -309,13 +310,13 @@ def execute(options):
     net.stop()
 
     if options.result_dir is not None:
-        print "Moving results to {}".format(options.result_dir)
+        logging.info("Moving results to {}".format(options.result_dir))
         shutil.move(options.work_dir, options.result_dir)
 
 def signal_handler(signal, frame):
-    print 'Cleaning up...'
-    call(["nfd-stop"])
-    call(["sudo", "mn", "--clean"])
+    logging.info("Cleaning up...")
+    call(['nfd-stop'])
+    call(['sudo', 'mn', '--clean'])
     sys.exit(1)
 
 if __name__ == '__main__':
