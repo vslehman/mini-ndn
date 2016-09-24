@@ -70,12 +70,12 @@ from mininet.cli import CLI
 from mininet.link import TCLink
 from mininet.log import setLogLevel, info
 from mininet.net import Mininet
-from mininet.topo import Topo
 from mininet.util import ipStr, ipParse
 
 import ndn
 from ndn.conf_parser import parse_hosts, parse_switches, parse_links
 from ndn.ndn_host import NdnHost, CpuLimitedNdnHost
+from ndn.topology import NdnTopology
 
 def print_experiment_names(option, opt, value, parser):
     print 'Mini-NDN experiments:'
@@ -221,42 +221,6 @@ def parse_args():
 
     return options
 
-class NdnTopo(Topo):
-    def __init__(self, conf_arq, work_dir, **opts):
-        Topo.__init__(self, **opts)
-
-        self.hosts_conf = parse_hosts(conf_arq)
-        self.switches_conf = parse_switches(conf_arq)
-        self.links_conf = parse_links(conf_arq)
-
-        self.is_tc_link = False
-        self.is_limited = False
-
-        for host in self.hosts_conf:
-            if host.cpu != None and self.is_limited != True:
-                self.is_limited = True
-
-            self.addHost(
-                host.name,
-                app=host.app,
-                params=host.uri_tuples,
-                cpu=host.cpu,
-                cores=host.cores,
-                cache=host.cache,
-                workdir=work_dir
-            )
-
-        for switch in self.switches_conf:
-            self.addSwitch(switch.name)
-
-        for link in self.links_conf:
-            if len(link.linkDict) == 0:
-                self.addLink(link.h1, link.h2)
-            else:
-                self.addLink(link.h1, link.h2, **link.linkDict)
-                self.is_tc_link = True
-
-        info('Parse of ' + conf_arq + ' done.\n')
 
 def get_template_file(options):
     if options.testbed:
@@ -282,7 +246,7 @@ def execute(options):
 
     start_time = datetime.now()
 
-    topo = NdnTopo(template_file, options.work_dir)
+    topo = NdnTopology(template_file, options.work_dir)
 
     if topo.is_tc_link is True and topo.is_limited is True:
         net = Mininet(topo, host=CpuLimitedNdnHost, link=TCLink)
