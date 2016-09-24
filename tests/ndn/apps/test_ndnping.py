@@ -35,7 +35,7 @@ class TestNdnPing(unittest.TestCase):
         ndnping.ping(self.host, self.name_prefix)
 
         expected_cmd = "ndnping {} &".format(self.name_prefix)
-        self.assertTrue(self.host.cmds[0] == expected_cmd)
+        self.assertEqual(self.host.cmds[0], expected_cmd)
 
     def test_args(self):
         args = {
