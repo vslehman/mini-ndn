@@ -58,8 +58,43 @@
 #   advertising or publicity pertaining to the Software or any derivatives
 #   without specific, written prior permission.
 
-import ConfigParser, re
+import ConfigParser
+import json
+import re
 import shlex
+
+class Config(object):
+    def __init__(self):
+        self.hosts = []
+        self.switches = []
+        self.links = []
+
+def parse(self, template_file):
+    with open(template_file, 'r') as config_file:
+        config_str = config_file.read()
+
+    try:
+        version_pair = config_str.split('\n', 1)[0].split(':')
+
+        if version_pair[0] == 'minindn-conf':
+            version = version_pair[1]
+    except:
+        version = '1.0'
+
+    config = Config()
+
+    if version == '1.0':
+        config.hosts = _parse_hosts_v1_0(template_file)
+        config.switches = _parse_switches_v1_0(template_file)
+        config.links = _parse_links_v1_0(template_file)
+    else:
+        json_config = json.loads(config_str.split('\n', 1)[1])
+        config.hosts = _parse_hosts(json_config)
+        config.switches = _parse_switches(json_config)
+        config.links = _parse_links(json_config)
+
+    return config
+
 
 class confNDNHost():
 
@@ -82,13 +117,14 @@ class confNDNHost():
                ' CPU: '    + str(self.cpu) + \
                ' Cores: '  + str(self.cores) + \
                ' Cache: '  + str(self.cache) + \
-               ' Radius: ' + str(self.radius) + \
-               ' Angle: '  + str(self.angle) + \
                ' NLSR Parameters: ' + self.nlsrParameters
 
 class confNdnSwitch:
     def __init__(self, name):
         self.name = name
+
+    def __repr__(self):
+        return 'switch: {}'.format(self.name)
 
 class confNDNLink():
 
@@ -100,7 +136,68 @@ class confNDNLink():
     def __repr__(self):
         return 'h1: ' + self.h1 + ' h2: ' + self.h2 + ' params: ' + str(self.linkDict)
 
-def parse_hosts(conf_arq):
+#######################
+# Mini-NDN Config v2.0
+#######################
+def _parse_hosts(json_config):
+    'Parse hosts section from the conf file.'
+    hosts = []
+    hosts_section = json_config['hosts']
+
+    #makes a second-pass read to hosts section to properly add hosts
+    for host in hosts_section:
+
+        name = host['name']
+
+        app    = host.get('app', None)
+        params = host.get('params', dict())
+        cpu    = host.get('cpu', None)
+        cores  = host.get('cores', None)
+        cache  = host.get('cache', None)
+
+        hosts.append(confNDNHost(name, app, params, cpu, cores, cache))
+
+    return hosts
+
+def _parse_switches(json_config):
+    'Parse switches section from the conf file.'
+    switches = []
+    switches_section = json_config['switches']
+
+    for switch in switches_section:
+        name = switch['name']
+        switches.append(confNdnSwitch(name))
+
+    return switches
+
+def _parse_links(json_config):
+    'Parse links section from the conf file.'
+    links = []
+    links_section = json_config['links']
+
+    for link in links_section:
+        host1 = link['host1']
+        host2 = link['host2']
+        bandwidth = link['bandwidth']
+        jitter = link['jitter']
+        max_queue_size = link['max_queue_size']
+        loss_rate = link['loss_rate']
+
+        link_params = {
+            'bw': bandwidth,
+            'jitter': jitter,
+            'max_queue_size': max_queue_size,
+            'loss_rate': loss_rate
+        }
+
+        links.append(confNDNLink(host1, host2, link_params))
+
+    return links
+
+#######################
+# Mini-NDN Config v1.0
+#######################
+def _parse_hosts_v1_0(conf_arq):
     'Parse hosts section from the conf file.'
     config = ConfigParser.RawConfigParser()
     config.read(conf_arq)
@@ -151,7 +248,7 @@ def parse_hosts(conf_arq):
 
     return hosts
 
-def parse_switches(conf_arq):
+def _parse_switches_v1_0(conf_arq):
     'Parse switches section from the conf file.'
     config = ConfigParser.RawConfigParser()
     config.read(conf_arq)
@@ -169,7 +266,7 @@ def parse_switches(conf_arq):
 
     return switches
 
-def parse_links(conf_arq):
+def _parse_links_v1_0(conf_arq):
     'Parse links section from the conf file.'
     arq = open(conf_arq,'r')
 
