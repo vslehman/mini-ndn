@@ -111,11 +111,11 @@ class TestConfParser(unittest.TestCase):
         link = config.links[0]
         self.assertEqual(link.h1, 'NodeA')
         self.assertEqual(link.h2, 'NodeB')
-        self.assertEqual(link.linkDict['delay'], 1000)
-        self.assertEqual(link.linkDict['bw'], 100)
-        self.assertEqual(link.linkDict['jitter'], 10)
-        self.assertEqual(link.linkDict['max_queue_size'], 128)
-        self.assertEqual(link.linkDict['loss'], 15)
+        self.assertEqual(link.delay, 1000)
+        self.assertEqual(link.bw, 100)
+        self.assertEqual(link.jitter, 10)
+        self.assertEqual(link.max_queue_size, 128)
+        self.assertEqual(link.loss, 15)
 
     def test_parse_v1_0(self):
         config = textwrap.dedent(
@@ -171,9 +171,9 @@ class TestConfParser(unittest.TestCase):
         self.assertTrue(('b', 'd') in link_names)
 
         link = [link for link in config.links if link.h1 == 'a' and link.h2 == 'b'][0]
-        self.assertEqual(link.linkDict['delay'], '1000ms')
-        self.assertEqual(link.linkDict['bw'], 100)
-        self.assertEqual(link.linkDict['jitter'], 10)
-        self.assertEqual(link.linkDict['max_queue_size'], 128)
-        self.assertEqual(link.linkDict['loss'], 15)
+        self.assertEqual(link.delay, '1000ms')
+        self.assertEqual(link.bw, 100)
+        self.assertEqual(link.jitter, 10)
+        self.assertEqual(link.max_queue_size, 128)
+        self.assertEqual(link.loss, 15)
 

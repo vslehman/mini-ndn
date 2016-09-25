@@ -63,11 +63,13 @@ import json
 import re
 import shlex
 
+
 class Config(object):
     def __init__(self):
         self.hosts = []
         self.switches = []
         self.links = []
+
 
 def parse(template_file):
     with open(template_file, 'r') as config_file:
@@ -98,10 +100,9 @@ def parse(template_file):
     return config
 
 
-class confNDNHost():
-
-    def __init__(self, settings):
-        for key, value in settings.iteritems():
+class HostConfig(object):
+    def __init__(self, params):
+        for key, value in params.iteritems():
             setattr(self, key, value)
 
     def __repr__(self):
@@ -113,22 +114,28 @@ class confNDNHost():
                ' Cache: '  + str(self.cache) + \
                ' NLSR Parameters: ' + self.nlsrParameters
 
-class confNdnSwitch:
-    def __init__(self, name):
-        self.name = name
+
+class SwitchConfig:
+    def __init__(self, params):
+        for key, value in params.iteritems():
+            setattr(self, key, value)
 
     def __repr__(self):
         return 'switch: {}'.format(self.name)
 
-class confNDNLink():
 
-    def __init__(self,h1,h2,linkDict=None):
+class LinkConfig():
+    def __init__(self, h1, h2, params):
         self.h1 = h1
         self.h2 = h2
-        self.linkDict = linkDict
+        self.linkDict = params
+
+        for key, value in params.iteritems():
+            setattr(self, key, value)
 
     def __repr__(self):
         return 'h1: ' + self.h1 + ' h2: ' + self.h2 + ' params: ' + str(self.linkDict)
+
 
 #######################
 # Mini-NDN Config v2.0
@@ -143,9 +150,10 @@ def _parse_hosts(json_config):
         return []
 
     for host in hosts_section:
-        hosts.append(confNDNHost(host))
+        hosts.append(HostConfig(host))
 
     return hosts
+
 
 def _parse_switches(json_config):
     'Parse switches section from the conf file.'
@@ -157,10 +165,10 @@ def _parse_switches(json_config):
         return []
 
     for switch in switches_section:
-        name = switch['name']
-        switches.append(confNdnSwitch(name))
+        switches.append(SwitchConfig(switch))
 
     return switches
+
 
 def _parse_links(json_config):
     'Parse links section from the conf file.'
@@ -172,25 +180,17 @@ def _parse_links(json_config):
         return []
 
     for link in links_section:
-        host1 = link['host1']
-        host2 = link['host2']
-        delay = link['delay']
-        bandwidth = link['bandwidth']
-        jitter = link['jitter']
-        max_queue_size = link['max_queue_size']
-        loss_rate = link['loss_rate']
-
         link_params = {
-            'delay': delay,
-            'bw': bandwidth,
-            'jitter': jitter,
-            'max_queue_size': max_queue_size,
-            'loss': loss_rate
+            'delay': link['delay'],
+            'bw': link['bandwidth'],
+            'jitter': link['jitter'],
+            'max_queue_size': link['max_queue_size'],
+            'loss': link['loss_rate']
         }
-
-        links.append(confNDNLink(host1, host2, link_params))
+        links.append(LinkConfig(link['host1'], link['host2'], link_params))
 
     return links
+
 
 #######################
 # Mini-NDN Config v1.0
@@ -242,7 +242,7 @@ def _parse_hosts_v1_0(conf_arq):
             else:
                 params[uri.split('=')[0]] = uri.split('=')[1]
 
-        host_settings = {
+        host_params = {
             'name': name,
             'app': app,
             'cpu': cpu,
@@ -252,9 +252,10 @@ def _parse_hosts_v1_0(conf_arq):
             'uri_tuples': params,
             'nlsrParameters': params
         }
-        hosts.append(confNDNHost(host_settings))
+        hosts.append(HostConfig(host_params))
 
     return hosts
+
 
 def _parse_switches_v1_0(conf_arq):
     'Parse switches section from the conf file.'
@@ -269,10 +270,13 @@ def _parse_switches_v1_0(conf_arq):
         return switches
 
     for item in items:
-        name = item[0]
-        switches.append(confNdnSwitch(name))
+        switch_params = {
+            'name': item[0]
+        }
+        switches.append(SwitchConfig(switch_params))
 
     return switches
+
 
 def _parse_links_v1_0(conf_arq):
     'Parse links section from the conf file.'
@@ -310,7 +314,7 @@ def _parse_links_v1_0(conf_arq):
                 value = float(value)
             link_dict[key] = value
 
-        links.append(confNDNLink(h1,h2,link_dict))
+        links.append(LinkConfig(h1,h2,link_dict))
 
 
     return links
