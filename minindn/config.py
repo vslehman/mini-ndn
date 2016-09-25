@@ -65,7 +65,8 @@ import shlex
 
 
 class Config(object):
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name
         self.hosts = []
         self.switches = []
         self.links = []
@@ -85,7 +86,7 @@ def parse(template_file):
     except:
         version = '1.0'
 
-    config = Config()
+    config = Config(template_file)
 
     if version == '1.0':
         config.hosts = _parse_hosts_v1_0(template_file)
@@ -111,9 +112,12 @@ class AppConfig(object):
 
 class HostConfig(object):
     def __init__(self, params):
+        self.apps = []
+        self.cpu = None
+        self.params = {}
+
         for key, value in params.iteritems():
             if key == 'apps':
-                self.apps = []
                 for app in value:
                     self.apps.append(AppConfig(app))
             else:

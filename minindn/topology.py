@@ -23,15 +23,11 @@
 
 import logging
 
-import mininet
+from mininet.topo import Topo as MnTopo
 
-import minindn
-
-class Topology(mininet.topo.Topo):
-    def __init__(self, template_file, work_dir, **opts):
+class Topology(MnTopo):
+    def __init__(self, config, work_dir, **opts):
         MnTopo.__init__(self, **opts)
-
-        config = minindn.config.parse(template_file)
 
         self.hosts_conf = config.hosts
         self.switches_conf = config.switches
@@ -41,13 +37,13 @@ class Topology(mininet.topo.Topo):
         self.is_limited = False
 
         for host in self.hosts_conf:
-            if host.cpu != None and self.is_limited != True:
+            if host.cpu is not None and self.is_limited is False:
                 self.is_limited = True
 
             self.addHost(
                 host.name,
-                app=host.app,
-                params=host.uri_tuples,
+                apps=host.apps,
+                params=host.params,
                 cpu=host.cpu,
                 cores=host.cores,
                 cache=host.cache,
@@ -64,5 +60,5 @@ class Topology(mininet.topo.Topo):
                 self.addLink(link.host1, link.host2, **link.link_dict)
                 self.is_tc_link = True
 
-        logging.info('Done parsing {}'.format(template_file))
+        logging.info('Done parsing {}'.format(config.name))
 

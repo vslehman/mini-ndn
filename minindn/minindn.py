@@ -73,6 +73,7 @@ from mininet.log import setLogLevel, info
 from mininet.net import Mininet
 from mininet.util import ipStr, ipParse
 
+import minindn
 import ndn
 from ndn.ndn_host import NdnHost, CpuLimitedNdnHost
 from minindn.topology import Topology
@@ -246,7 +247,8 @@ def execute(options):
 
     start_time = datetime.now()
 
-    topo = NdnTopology(template_file, options.work_dir)
+    config = minindn.config.parse(template_file)
+    topo = Topology(config, options.work_dir)
 
     if topo.is_tc_link is True and topo.is_limited is True:
         net = Mininet(topo, host=CpuLimitedNdnHost, link=TCLink)
