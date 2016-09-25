@@ -75,7 +75,7 @@ from mininet.util import ipStr, ipParse
 
 import ndn
 from ndn.ndn_host import NdnHost, CpuLimitedNdnHost
-from ndn.topology import NdnTopology
+from minindn.topology import Topology
 
 def print_experiment_names(option, opt, value, parser):
     print 'Mini-NDN experiments:'
@@ -84,7 +84,7 @@ def print_experiment_names(option, opt, value, parser):
     sys.exit()
 
 def print_version(option, opt, value, parser):
-    print 'Mini-NDN v{}'.format(ndn.common.VERSION_NUMBER)
+    print 'Mini-NDN v{}'.format(minindn.common.VERSION_NUMBER)
     sys.exit()
 
 def create_results_dir(result_dir, faces, is_hr_enabled):
@@ -224,9 +224,9 @@ def parse_args():
 
 def get_template_file(options):
     if options.testbed:
-        return os.path.join(ndn.common.MINI_NDN_INSTALL_DIR, 'minindn.testbed.conf')
+        return os.path.join(minindn.common.MINI_NDN_INSTALL_DIR, 'minindn.testbed.conf')
     elif options.template_file == '':
-        return os.path.join(ndn.common.MINI_NDN_INSTALL_DIR, 'default-topology.conf')
+        return os.path.join(minindn.common.MINI_NDN_INSTALL_DIR, 'default-topology.conf')
 
     return None
 
@@ -318,10 +318,15 @@ def signal_handler(signal, frame):
     call(['sudo', 'mn', '--clean'])
     sys.exit(1)
 
-if __name__ == '__main__':
+
+def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     options = parse_args()
 
     setLogLevel('info')
     execute(options)
+
+
+if __name__ == '__main__':
+    main()

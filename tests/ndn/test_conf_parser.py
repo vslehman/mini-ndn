@@ -27,7 +27,7 @@ import tempfile
 import unittest
 from mock import mock_open, patch
 
-from ndn import conf_parser
+import minindn
 
 class TestConfParser(unittest.TestCase):
     def test_parse_hosts(self):
@@ -41,15 +41,16 @@ class TestConfParser(unittest.TestCase):
                      "params": "params",
                      "cpu": 10,
                      "cores": 2,
-                     "cache": 10
+                     "cache": 10,
+                     "new_param": true
                    }
                  ]
                }
             """
         )
 
-        with patch('ndn.conf_parser.open', mock_open(read_data=json_config), create=True):
-            config = conf_parser.parse('test.conf')
+        with patch('minindn.config.open', mock_open(read_data=json_config), create=True):
+            config = minindn.config.parse('test.conf')
 
         self.assertEqual(len(config.hosts), 1)
 
@@ -60,6 +61,7 @@ class TestConfParser(unittest.TestCase):
         self.assertEqual(host.cpu, 10)
         self.assertEqual(host.cores, 2)
         self.assertEqual(host.cache, 10)
+        self.assertEqual(host.new_param, True)
 
     def test_parse_switches(self):
         json_config = textwrap.dedent(
@@ -74,8 +76,8 @@ class TestConfParser(unittest.TestCase):
             """
         )
 
-        with patch('ndn.conf_parser.open', mock_open(read_data=json_config), create=True):
-            config = conf_parser.parse('test.conf')
+        with patch('minindn.config.open', mock_open(read_data=json_config), create=True):
+            config = minindn.config.parse('test.conf')
 
         self.assertEqual(len(config.switches), 1)
 
@@ -101,8 +103,8 @@ class TestConfParser(unittest.TestCase):
             """
         )
 
-        with patch('ndn.conf_parser.open', mock_open(read_data=json_config), create=True):
-            config = conf_parser.parse('test.conf')
+        with patch('minindn.config.open', mock_open(read_data=json_config), create=True):
+            config = minindn.config.parse('test.conf')
 
         self.assertEqual(len(config.links), 1)
 
@@ -136,7 +138,7 @@ class TestConfParser(unittest.TestCase):
         temp_file.write(config)
         temp_file.seek(0)
 
-        config = conf_parser.parse(temp_file.name)
+        config = minindn.config.parse(temp_file.name)
 
         # Hosts
         self.assertEqual(len(config.hosts), 4)

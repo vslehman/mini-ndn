@@ -2,11 +2,18 @@
 
 from setuptools import setup, find_packages
 
-from ndn.common import VERSION_NUMBER
+from minindn.common import VERSION_NUMBER
 
 setup(
     name = "Mini-NDN",
     version = VERSION_NUMBER,
     packages = find_packages(),
-    scripts = ['bin/minindn', 'bin/minindnedit'],
+    entry_points={
+        'console_scripts': [
+            'minindn = minindn.minindn:main',
+        ],
+        'gui_scripts': [
+            'minindnedit = minindn.minindnedit:main',
+        ]
+    },
 )

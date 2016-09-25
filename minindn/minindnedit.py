@@ -1887,7 +1887,7 @@ def addDictOption( opts, choicesDict, default, name, helpStr=None ):
                      default = default,
                      help = helpStr )
 
-if __name__ == '__main__':
+def main():
     setLogLevel( 'info' )
     app = MiniEdit()
     """ import topology if specified """
@@ -1899,3 +1899,7 @@ if __name__ == '__main__':
     global isLinkPopup
 
     app.mainloop()
+
+
+if __name__ == '__main__':
+    main()

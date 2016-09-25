@@ -23,15 +23,15 @@
 
 import logging
 
-from mininet.topo import Topo as MnTopo
+import mininet
 
-from ndn import conf_parser
+import minindn
 
-class NdnTopology(MnTopo):
+class Topology(mininet.topo.Topo):
     def __init__(self, template_file, work_dir, **opts):
         MnTopo.__init__(self, **opts)
 
-        config = conf_parser.parse(template_file)
+        config = minindn.config.parse(template_file)
 
         self.hosts_conf = config.hosts
         self.switches_conf = config.switches

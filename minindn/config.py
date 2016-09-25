@@ -100,17 +100,9 @@ def parse(template_file):
 
 class confNDNHost():
 
-    def __init__(self, name, app='', params='', cpu=None, cores=None, cache=None):
-        self.name = name
-        self.app = app
-        self.uri_tuples = params
-        self.params = params
-        self.cpu = cpu
-        self.cores = cores
-        self.cache = cache
-
-        # For now assume leftovers are NLSR configuration parameters
-        self.nlsrParameters = params
+    def __init__(self, settings):
+        for key, value in settings.iteritems():
+            setattr(self, key, value)
 
     def __repr__(self):
         return 'Name: '    + self.name + \
@@ -151,16 +143,7 @@ def _parse_hosts(json_config):
         return []
 
     for host in hosts_section:
-
-        name = host['name']
-
-        app    = host.get('app', None)
-        params = host.get('params', dict())
-        cpu    = host.get('cpu', None)
-        cores  = host.get('cores', None)
-        cache  = host.get('cache', None)
-
-        hosts.append(confNDNHost(name, app, params, cpu, cores, cache))
+        hosts.append(confNDNHost(host))
 
     return hosts
 
@@ -259,7 +242,17 @@ def _parse_hosts_v1_0(conf_arq):
             else:
                 params[uri.split('=')[0]] = uri.split('=')[1]
 
-        hosts.append(confNDNHost(name, app, params, cpu, cores, cache))
+        host_settings = {
+            'name': name,
+            'app': app,
+            'cpu': cpu,
+            'cores': cores,
+            'cache': cache,
+            'params': params,
+            'uri_tuples': params,
+            'nlsrParameters': params
+        }
+        hosts.append(confNDNHost(host_settings))
 
     return hosts
 
