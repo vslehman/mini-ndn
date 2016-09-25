@@ -69,15 +69,17 @@ class Config(object):
         self.switches = []
         self.links = []
 
-def parse(self, template_file):
+def parse(template_file):
     with open(template_file, 'r') as config_file:
         config_str = config_file.read()
 
     try:
-        version_pair = config_str.split('\n', 1)[0].split(':')
+        version_pair = config_str.split('\n', 1)[0].strip().split(':')
 
         if version_pair[0] == 'minindn-conf':
             version = version_pair[1]
+        else:
+            version = '1.0'
     except:
         version = '1.0'
 
@@ -142,9 +144,12 @@ class confNDNLink():
 def _parse_hosts(json_config):
     'Parse hosts section from the conf file.'
     hosts = []
-    hosts_section = json_config['hosts']
 
-    #makes a second-pass read to hosts section to properly add hosts
+    try:
+        hosts_section = json_config['hosts']
+    except KeyError:
+        return []
+
     for host in hosts_section:
 
         name = host['name']
@@ -162,7 +167,11 @@ def _parse_hosts(json_config):
 def _parse_switches(json_config):
     'Parse switches section from the conf file.'
     switches = []
-    switches_section = json_config['switches']
+
+    try:
+        switches_section = json_config['switches']
+    except KeyError:
+        return []
 
     for switch in switches_section:
         name = switch['name']
@@ -173,21 +182,27 @@ def _parse_switches(json_config):
 def _parse_links(json_config):
     'Parse links section from the conf file.'
     links = []
-    links_section = json_config['links']
+
+    try:
+        links_section = json_config['links']
+    except KeyError:
+        return []
 
     for link in links_section:
         host1 = link['host1']
         host2 = link['host2']
+        delay = link['delay']
         bandwidth = link['bandwidth']
         jitter = link['jitter']
         max_queue_size = link['max_queue_size']
         loss_rate = link['loss_rate']
 
         link_params = {
+            'delay': delay,
             'bw': bandwidth,
             'jitter': jitter,
             'max_queue_size': max_queue_size,
-            'loss_rate': loss_rate
+            'loss': loss_rate
         }
 
         links.append(confNDNLink(host1, host2, link_params))
