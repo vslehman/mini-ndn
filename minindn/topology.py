@@ -58,10 +58,10 @@ class Topology(mininet.topo.Topo):
             self.addSwitch(switch.name)
 
         for link in self.links_conf:
-            if len(link.linkDict) == 0:
-                self.addLink(link.h1, link.h2)
+            if len(link.link_dict) == 0:
+                self.addLink(link.host1, link.host2)
             else:
-                self.addLink(link.h1, link.h2, **link.linkDict)
+                self.addLink(link.host1, link.host2, **link.link_dict)
                 self.is_tc_link = True
 
         logging.info('Done parsing {}'.format(template_file))

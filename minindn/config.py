@@ -100,10 +100,24 @@ def parse(template_file):
     return config
 
 
-class HostConfig(object):
+class AppConfig(object):
     def __init__(self, params):
         for key, value in params.iteritems():
             setattr(self, key, value)
+
+    def __repr__(self):
+        return 'app: {}'.format(self.name)
+
+
+class HostConfig(object):
+    def __init__(self, params):
+        for key, value in params.iteritems():
+            if key == 'apps':
+                self.apps = []
+                for app in value:
+                    self.apps.append(AppConfig(app))
+            else:
+                setattr(self, key, value)
 
     def __repr__(self):
         return 'Name: '    + self.name + \
@@ -115,7 +129,7 @@ class HostConfig(object):
                ' NLSR Parameters: ' + self.nlsrParameters
 
 
-class SwitchConfig:
+class SwitchConfig(object):
     def __init__(self, params):
         for key, value in params.iteritems():
             setattr(self, key, value)
@@ -124,17 +138,17 @@ class SwitchConfig:
         return 'switch: {}'.format(self.name)
 
 
-class LinkConfig():
-    def __init__(self, h1, h2, params):
-        self.h1 = h1
-        self.h2 = h2
-        self.linkDict = params
+class LinkConfig(object):
+    def __init__(self, host1, host2, params):
+        self.host1 = host1
+        self.host2 = host2
+        self.link_dict = params
 
         for key, value in params.iteritems():
             setattr(self, key, value)
 
     def __repr__(self):
-        return 'h1: ' + self.h1 + ' h2: ' + self.h2 + ' params: ' + str(self.linkDict)
+        return 'host1: ' + self.host1 + ' host2: ' + self.host2 + ' params: ' + str(self.link_dict)
 
 
 #######################
@@ -227,15 +241,15 @@ def _parse_hosts_v1_0(conf_arq):
         cache = None
 
         for uri in uris:
-            if re.match("cpu",uri):
+            if re.match("cpu", uri):
                 cpu = float(uri.split('=')[1])
-            elif re.match("cores",uri):
+            elif re.match("cores", uri):
                 cores = uri.split('=')[1]
-            elif re.match("cache",uri):
+            elif re.match("cache", uri):
                 cache = uri.split('=')[1]
-            elif re.match("mem",uri):
+            elif re.match("mem", uri):
                 mem = uri.split('=')[1]
-            elif re.match("app",uri):
+            elif re.match("app", uri):
                 app = uri.split('=')[1]
             elif re.match("_", uri):
                 app = ""
@@ -280,7 +294,7 @@ def _parse_switches_v1_0(conf_arq):
 
 def _parse_links_v1_0(conf_arq):
     'Parse links section from the conf file.'
-    arq = open(conf_arq,'r')
+    arq = open(conf_arq, 'r')
 
     links = []
 
@@ -300,7 +314,7 @@ def _parse_links_v1_0(conf_arq):
         if len(args) == 0:
             continue
 
-        h1, h2 = args.pop(0).split(':')
+        host1, host2 = args.pop(0).split(':')
 
         link_dict = {}
 
@@ -308,13 +322,13 @@ def _parse_links_v1_0(conf_arq):
             arg_name, arg_value = arg.split('=')
             key = arg_name
             value = arg_value
-            if key in ['bw','jitter','max_queue_size']:
+            if key in ['bw', 'jitter', 'max_queue_size']:
                 value = int(value)
             if key in ['loss']:
                 value = float(value)
             link_dict[key] = value
 
-        links.append(LinkConfig(h1,h2,link_dict))
+        links.append(LinkConfig(host1, host2, link_dict))
 
 
     return links

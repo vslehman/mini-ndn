@@ -37,7 +37,6 @@ class TestConfParser(unittest.TestCase):
                  "hosts": [
                    {
                      "name": "NodeA",
-                     "app": "test_app",
                      "params": "params",
                      "cpu": 10,
                      "cores": 2,
@@ -56,7 +55,6 @@ class TestConfParser(unittest.TestCase):
 
         host = config.hosts[0]
         self.assertEqual(host.name, 'NodeA')
-        self.assertEqual(host.app, 'test_app')
         self.assertEqual(host.params, 'params')
         self.assertEqual(host.cpu, 10)
         self.assertEqual(host.cores, 2)
@@ -109,13 +107,56 @@ class TestConfParser(unittest.TestCase):
         self.assertEqual(len(config.links), 1)
 
         link = config.links[0]
-        self.assertEqual(link.h1, 'NodeA')
-        self.assertEqual(link.h2, 'NodeB')
+        self.assertEqual(link.host1, 'NodeA')
+        self.assertEqual(link.host2, 'NodeB')
         self.assertEqual(link.delay, 1000)
         self.assertEqual(link.bw, 100)
         self.assertEqual(link.jitter, 10)
         self.assertEqual(link.max_queue_size, 128)
         self.assertEqual(link.loss, 15)
+
+    def test_parse_apps(self):
+        json_config = textwrap.dedent(
+            """minindn-conf:2.0
+               {
+                 "hosts": [
+                   {
+                     "name": "NodeA",
+                     "apps": [
+                       {
+                         "name": "nfd",
+                         "log_level": "INFO"
+                       },
+                       {
+                         "name": "nlsr",
+                         "hyperbolic_state": "hr",
+                         "radius": 12.34,
+                         "angle": 1.234,
+                         "network": "/ndn",
+                         "site": "/edu/memphis",
+                         "router": "router_name",
+                         "log_level": "DEBUG",
+                         "max_faces_per_prefix": 4
+                       }
+                     ]
+                   }
+                 ]
+               }
+            """
+        )
+
+        with patch('minindn.config.open', mock_open(read_data=json_config), create=True):
+            config = minindn.config.parse('test.conf')
+
+        self.assertEqual(len(config.hosts), 1)
+
+        host = config.hosts[0]
+        nfd = [app for app in host.apps if app.name == 'nfd'][0]
+        self.assertEqual(nfd.log_level, 'INFO')
+
+        nlsr = [app for app in host.apps if app.name == 'nlsr'][0]
+        self.assertEqual(nlsr.hyperbolic_state, 'hr')
+
 
     def test_parse_v1_0(self):
         config = textwrap.dedent(
@@ -165,12 +206,12 @@ class TestConfParser(unittest.TestCase):
         # Links
         self.assertEqual(len(config.links), 3)
 
-        link_names = [(link.h1, link.h2) for link in config.links]
+        link_names = [(link.host1, link.host2) for link in config.links]
         self.assertTrue(('a', 'b') in link_names)
         self.assertTrue(('a', 'c') in link_names)
         self.assertTrue(('b', 'd') in link_names)
 
-        link = [link for link in config.links if link.h1 == 'a' and link.h2 == 'b'][0]
+        link = [link for link in config.links if link.host1 == 'a' and link.host2 == 'b'][0]
         self.assertEqual(link.delay, '1000ms')
         self.assertEqual(link.bw, 100)
         self.assertEqual(link.jitter, 10)
