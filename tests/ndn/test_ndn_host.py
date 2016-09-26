@@ -21,7 +21,16 @@
 # along with Mini-NDN, e.g., in COPYING.md file.
 # If not, see <http://www.gnu.org/licenses/>.
 
-import os
+import unittest
 
-MINI_NDN_INSTALL_DIR = os.path.abspath('/usr/local/etc/mini-ndn/')
-VERSION_NUMBER = "0.2.0"
+from ndn.ndn_host import NdnHost
+from tests.mock import MockHost
+
+class TestNdnPing(unittest.TestCase):
+    def test_basic(self):
+        params = {
+            'cpu': 10,
+            'cache': 128
+        }
+        host = NdnHost('NodeA', **params)
+

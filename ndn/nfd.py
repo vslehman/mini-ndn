@@ -27,7 +27,7 @@ import shutil
 import subprocess
 import time
 
-from ndn.common import MINI_NDN_INSTALL_DIR
+from minindn.common import MINI_NDN_INSTALL_DIR
 from ndn.ndn_application import NdnApplication
 
 NFD_CONF_DIR = os.path.abspath('/usr/local/etc/ndn/')
@@ -49,11 +49,12 @@ STRATEGIES = [
     STRATEGY_NCC
 ]
 
-VERSION = subprocess.check_output('nfd --version')
 def _get_version():
     output = subprocess.check_output('nfd --version', shell=True)
     matches = re.match('([0-9]+\.[0-9]+\.[0-9]+)\-', output)
     return matches.group(1)
+
+VERSION = _get_version()
 
 _CONF_TEMPLATE_STRING = None
 def _create_conf_template_string():

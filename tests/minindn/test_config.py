@@ -151,10 +151,10 @@ class TestConfParser(unittest.TestCase):
         self.assertEqual(len(config.hosts), 1)
 
         host = config.hosts[0]
-        nfd = [app for app in host.apps if app.name == 'nfd'][0]
+        nfd = next(app for app in host.apps if app.name == 'nfd')
         self.assertEqual(nfd.log_level, 'INFO')
 
-        nlsr = [app for app in host.apps if app.name == 'nlsr'][0]
+        nlsr = next(app for app in host.apps if app.name == 'nlsr')
         self.assertEqual(nlsr.hyperbolic_state, 'hr')
 
 
@@ -190,7 +190,7 @@ class TestConfParser(unittest.TestCase):
         self.assertTrue('c' in host_names)
         self.assertTrue('d' in host_names)
 
-        a = [host for host in config.hosts if host.name == 'a'][0]
+        a = next(host for host in config.hosts if host.name == 'a')
         self.assertEqual(a.name, 'a')
         self.assertEqual(a.app, 'test_app')
         self.assertEqual(a.cpu, 100)
@@ -211,7 +211,7 @@ class TestConfParser(unittest.TestCase):
         self.assertTrue(('a', 'c') in link_names)
         self.assertTrue(('b', 'd') in link_names)
 
-        link = [link for link in config.links if link.host1 == 'a' and link.host2 == 'b'][0]
+        link = next(link for link in config.links if link.host1 == 'a' and link.host2 == 'b')
         self.assertEqual(link.delay, '1000ms')
         self.assertEqual(link.bw, 100)
         self.assertEqual(link.jitter, 10)

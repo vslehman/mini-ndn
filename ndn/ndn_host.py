@@ -61,51 +61,29 @@
 from mininet.node import CPULimitedHost, Host, Node
 from ndn.nfd import Nfd
 
-class NdnHostCommon():
+class NdnHostCommon(object):
     "Common methods of NdnHost and CpuLimitedNdnHost"
 
-    def configNdn(self):
-        self.buildPeerIp()
-
-    def buildPeerIp(self):
-        for iface in self.intfList():
-            link = iface.link
-            if link:
-                node1, node2 = link.intf1.node, link.intf2.node
-                if node1 == self:
-                    self.peerList[node2.name] = link.intf2.node.IP(link.intf2)
-                else:
-                    self.peerList[node1.name] = link.intf1.node.IP(link.intf1)
-
-    inited = False
-
-    @classmethod
-    def init(cls):
-        "Initialization for NDNHost class"
-        cls.inited = True
-
-class NdnHost(Host, NdnHostCommon):
-    "NDNHost is a Host that always runs NFD"
-
     def __init__(self, name, **kwargs):
-
         Host.__init__(self, name, **kwargs)
-        if not NdnHost.inited:
-            NdnHostCommon.init()
+        self.NodeClass = Node
 
         # Create home directory for a node
         self.homeFolder = "%s/%s" % (self.params['workdir'], self.name)
         self.cmd("mkdir -p %s" % self.homeFolder)
         self.cmd("cd %s" % self.homeFolder)
 
-        self.nfd = Nfd(self)
-        self.nfd.start()
+        for app_params in apps:
+            AppClass = AppsManager.get(app.name)
+            app = AppClass(self, app_params)
+            setattr(self, app.name, app_params)
+            app.start()
 
         self.peerList = {}
 
     def config(self, app=None, cache=None, **params):
 
-        r = Node.config(self, **params)
+        r = self.NodeClass.config(self, **params)
 
         self.setParam(r, 'app', app=app)
         self.setParam(r, 'cache', cache=cache)
@@ -116,37 +94,31 @@ class NdnHost(Host, NdnHostCommon):
         "Stop node."
         self.nfd.stop()
         Host.terminate(self)
+
+    def buildPeerIp(self):
+    for iface in self.intfList():
+        link = iface.link
+        if link:
+            node1, node2 = link.intf1.node, link.intf2.node
+            if node1 == self:
+                self.peerList[node2.name] = link.intf2.node.IP(link.intf2)
+            else:
+                self.peerList[node1.name] = link.intf1.node.IP(link.intf1)
+
+
+class NdnHost(Host, NdnHostCommon):
+    "NDNHost is a Host that always runs NFD"
+    def __init__(self, name, **kwargs):
+        Host.__init__(self, name, **kwargs)
+        NdnHostCommon.__init__(self, name, **kwargs)
+        self.NodeClass = Node
+
 
 class CpuLimitedNdnHost(CPULimitedHost, NdnHostCommon):
     '''CPULimitedNDNHost is a Host that always runs NFD and extends CPULimitedHost.
        It should be used when one wants to limit the resources of NDN routers and hosts '''
+    def __init__(self, name, **kwargs):
+        Host.__init__(self, name, **kwargs)
+        NdnHostCommon.__init__(self, name, **kwargs)
+        self.NodeClass = CPULimitedHost
 
-    def __init__(self, name, sched='cfs', **kwargs):
-
-        CPULimitedHost.__init__(self, name, sched, **kwargs)
-        if not NdnHost.inited:
-            NdnHostCommon.init()
-
-        # Create home directory for a node
-        self.homeFolder = "%s/%s" % (self.params['workdir'], self.name)
-        self.cmd("mkdir -p %s" % self.homeFolder)
-        self.cmd("cd %s" % self.homeFolder)
-
-        self.nfd = Nfd(self)
-        self.nfd.start()
-
-        self.peerList = {}
-
-    def config(self, app=None, cpu=None, cores=None, cache=None, **params):
-
-        r = CPULimitedHost.config(self,cpu,cores, **params)
-
-        self.setParam(r, 'app', app=app)
-        self.setParam(r, 'cache', cache=cache)
-
-        return r
-
-    def terminate(self):
-        "Stop node."
-        self.nfd.stop()
-        Host.terminate(self)
