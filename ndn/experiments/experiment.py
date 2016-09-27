@@ -93,9 +93,9 @@ class Experiment:
         # Use "&" to run in background and perform parallel pings
         print "Scheduling ping(s) from %s to %s" % (source.name, dest.name)
         ping_args = {
-            print_timestamp=True,
-            count=nPings,
-            log_file='ping-data/{}.txt'.format(dest.name)
+            'print_timestamp': True,
+            'count': nPings,
+            'log_file': 'ping-data/{}.txt'.format(dest.name)
         }
         ndnping.ping(source, "/ndn/edu/{}".format(dest.name), **ping_args)
         time.sleep(0.2)

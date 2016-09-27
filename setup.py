@@ -10,10 +10,10 @@ setup(
     packages = find_packages(),
     entry_points={
         'console_scripts': [
-            'minindn = minindn.minindn:main',
+            'minindn = bin.main:main',
         ],
         'gui_scripts': [
-            'minindnedit = minindn.minindnedit:main',
+            'minindnedit = bin.minindnedit:main',
         ]
     },
 )

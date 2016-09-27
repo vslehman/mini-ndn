@@ -32,5 +32,5 @@ class TestNdnPing(unittest.TestCase):
             'cpu': 10,
             'cache': 128
         }
-        host = NdnHost('NodeA', **params)
+        #host = NdnHost('NodeA', **params)
 

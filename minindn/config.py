@@ -260,9 +260,16 @@ def _parse_hosts_v1_0(conf_arq):
             else:
                 params[uri.split('=')[0]] = uri.split('=')[1]
 
+        nfd = {
+            'name': 'nfd'
+        }
+
+        apps = [nfd]
+
         host_params = {
             'name': name,
             'app': app,
+            'apps': apps,
             'cpu': cpu,
             'cores': cores,
             'cache': cache,

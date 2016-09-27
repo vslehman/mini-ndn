@@ -68,15 +68,20 @@ from datetime import datetime
 from subprocess import call
 
 from mininet.cli import CLI
+import mininet.node
 from mininet.link import TCLink
 from mininet.log import setLogLevel, info
 from mininet.net import Mininet
 from mininet.util import ipStr, ipParse
 
 import minindn
+import minindn.common as minindn_common
+import minindn.config as minindn_config
 import ndn
-from ndn.ndn_host import NdnHost, CpuLimitedNdnHost
+import ndn.nlsr as nlsr
 from minindn.topology import Topology
+
+from ndn.ndn_host import NdnHost, CpuLimitedNdnHost
 
 def print_experiment_names(option, opt, value, parser):
     print 'Mini-NDN experiments:'
@@ -85,7 +90,7 @@ def print_experiment_names(option, opt, value, parser):
     sys.exit()
 
 def print_version(option, opt, value, parser):
-    print 'Mini-NDN v{}'.format(minindn.common.VERSION_NUMBER)
+    print 'Mini-NDN v{}'.format(minindn_common.VERSION_NUMBER)
     sys.exit()
 
 def create_results_dir(result_dir, faces, is_hr_enabled):
@@ -121,14 +126,14 @@ def parse_args():
     parser.add_option(
         "--experiment",
         action="store",
-        dest="experiment",
+        dest="experiment_name",
         default=None,
         help="Runs the specified experiment"
     )
     parser.add_option(
         "--faces",
         action="store",
-        dest="faces",
+        dest="num_faces",
         type="int",
         default=3,
         help="Specify number of faces 0-60"
@@ -225,9 +230,9 @@ def parse_args():
 
 def get_template_file(options):
     if options.testbed:
-        return os.path.join(minindn.common.MINI_NDN_INSTALL_DIR, 'minindn.testbed.conf')
+        return os.path.join(minindn_common.MINI_NDN_INSTALL_DIR, 'minindn.testbed.conf')
     elif options.template_file == '':
-        return os.path.join(minindn.common.MINI_NDN_INSTALL_DIR, 'default-topology.conf')
+        return os.path.join(minindn_common.MINI_NDN_INSTALL_DIR, 'default-topology.conf')
 
     return None
 
@@ -247,7 +252,7 @@ def execute(options):
 
     start_time = datetime.now()
 
-    config = minindn.config.parse(template_file)
+    config = minindn_config.parse(template_file)
     topo = Topology(config, options.work_dir)
 
     if topo.is_tc_link is True and topo.is_limited is True:
@@ -289,13 +294,12 @@ def execute(options):
         'max-faces-per-prefix': options.num_faces,
         'hyperbolic-state': options.is_hr_enabled
     }
-    ndn.nlsr.setup(topo.hosts_conf, options.work_dir, nlsr_opts)
+    nlsr.setup(net, topo.hosts_conf, options.work_dir, nlsr_opts)
 
     logging.info('Setup time: {}'.format((start_time - datetime.now()).seconds))
 
     # Load experiment
-    experiment_name = options.experiment_name
-    if experiment_name is not None:
+    if options.experiment_name is not None:
         experiment_args = {
             "net": net,
             "nodes": nodes,
@@ -303,7 +307,7 @@ def execute(options):
             "num_pings": options.num_pings,
             "pct_traffic": options.pct_traffic
         }
-        ndn.ExperimentManager.run(experiment_name, experiment_args)
+        ndn.ExperimentManager.run(options.experiment_name, experiment_args)
 
     if options.is_cli_enabled:
         CLI(net)

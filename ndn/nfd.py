@@ -58,13 +58,14 @@ VERSION = _get_version()
 
 _CONF_TEMPLATE_STRING = None
 def _create_conf_template_string():
+    global _CONF_TEMPLATE_STRING
     if _CONF_TEMPLATE_STRING is None:
         # Use nfd.conf as default configuration for NFD, otherwise use the sample configuration
-        if os.path.isfile(NFD_CONF_FILE):
-            with open(NFD_CONF_FILE, 'r') as conf_file:
+        if os.path.isfile(CONF_FILE):
+            with open(CONF_FILE, 'r') as conf_file:
                 _CONF_TEMPLATE_STRING = conf_file.read()
-        elif os.path.isfile(NFD_SAMPLE_CONF_FILE):
-            with open(NFD_SAMPLE_CONF_FILE, 'r') as conf_file:
+        elif os.path.isfile(SAMPLE_CONF_FILE):
+            with open(SAMPLE_CONF_FILE, 'r') as conf_file:
                 _CONF_TEMPLATE_STRING = conf_file.read()
         else:
             raise IOError("Neither nfd.conf or nfd.conf.sample can be found in {}!".format(NFD_CONF_DIR))
@@ -85,7 +86,7 @@ class Nfd(NdnApplication):
         self.logFile    = os.path.join(node.homeFolder, '{}.log'.format(node.name))
         self.sockFile   = os.path.abspath("/var/run/{}.sock".format(node.name))
         self.ndnFolder  = os.path.join(node.homeFolder, '.ndn')
-        self.clientConf = os.path.join(node.ndnFolder, 'client.conf')
+        self.clientConf = os.path.join(self.ndnFolder, 'client.conf')
 
         # Create conf file
         conf_str = _CONF_TEMPLATE_STRING

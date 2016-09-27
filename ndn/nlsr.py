@@ -29,7 +29,7 @@ import os
 import shutil
 import textwrap
 
-def setup(hosts_conf, work_dir, nlsr_opts):
+def setup(net, hosts_conf, work_dir, nlsr_opts):
   is_security_enabled = nlsr_opts.get('security', False)
   max_faces_per_prefix = nlsr_opts.get('max-faces-per-prefix', 3)
   hyperbolic_state = nlsr_opts.get('hyperbolic_state', 'off')
